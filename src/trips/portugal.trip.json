@@ -1,0 +1,36 @@
+{
+  "format": "trip-planner",
+  "version": 1,
+  "trip": {
+    "title": "Two weeks exploring Portugal",
+    "description": "A relaxed trip focused on food, architecture, and walks. Prices are illustrative planning estimates, not researched quotes.",
+    "tripStartDate": "2027-05-03",
+    "currency": "USD",
+    "destinations": [
+      {
+        "name": "Lisbon",
+        "durationWeeks": 1,
+        "notes": "Explore neighborhoods and consider a Sintra day trip.",
+        "costs": {
+          "flights": null,
+          "lodgingPerNight": 120,
+          "foodPerDay": 45,
+          "transport": 80,
+          "misc": 100
+        }
+      },
+      {
+        "name": "Porto",
+        "durationWeeks": 1,
+        "notes": "Include the train from Lisbon in this stop's transport.",
+        "costs": {
+          "flights": null,
+          "lodgingPerNight": 100,
+          "foodPerDay": 40,
+          "transport": 100,
+          "misc": 80
+        }
+      }
+    ]
+  }
+}
