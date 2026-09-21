@@ -2,7 +2,7 @@
 
 Create one UTF-8 JSON object and save it as `your-trip.trip.json`. Return JSON only, without comments, trailing commas, or explanatory text outside the object.
 
-The envelope is `{ "format": "trip-planner", "version": 1, "trip": { ... } }`.
+The envelope is `{ "format": "trip-planner", "version": 2, "trip": { ... } }`.
 
 ## Trip fields
 
@@ -18,6 +18,7 @@ The envelope is `{ "format": "trip-planner", "version": 1, "trip": { ... } }`.
 - `durationWeeks`: required positive whole number. One week is 7 days and 7 nights. Do not use fractions or a duration in days.
 - `notes`: optional, at most 10,000 characters; suggested activities, practical details, estimate sources, and uncertainties belong here.
 - `color`: optional six-digit hex color such as `#2563eb`. The app chooses a color if omitted.
+- `location`: optional object with both `latitude` (−90 to 90) and `longitude` (−180 to 180), as finite numbers in decimal degrees. Use an approximate destination center when known; omit the entire location when uncertain. South and west are negative. For example, Lisbon is `{ "latitude": 38.7223, "longitude": -9.1393 }`. The Globe view connects located stops in itinerary order; these connections are illustrative, not flight or road paths.
 - `costs`: optional object with any of the five fields below. Omitted fields mean unknown.
 
 ## Cost fields
@@ -47,6 +48,6 @@ Assign each flight or transfer to exactly one stop. Do not count it again at the
 
 Paste the JSON into Import trip, or choose the saved file. Review the preview, then import it as a new trip. Errors include the field to fix; return the errors and your file to the model if needed. Exported trips use this same format and can become examples for future prompts.
 
-Version 1 accepts only the documented fields. Future versions require explicit app support. Files contain itinerary data only; sharing a file gives the recipient an independent editable copy.
+Version 2 adds optional locations. The app also imports version 1 files without locations; all new exports use version 2. Older app versions cannot import version 2 files. Unknown fields and unsupported versions are rejected. Files contain itinerary data only; sharing a file gives the recipient an independent editable copy.
 
 The JSON Schema uses the standard `date` string format for real YYYY-MM-DD dates. Enable date-format validation in external validators; the app also checks total trip duration and UTF-8 file size after schema validation.

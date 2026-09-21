@@ -16,6 +16,6 @@ export function buildTripPrompt(
     JSON.stringify(tripSchema, null, 2),
     "## Example trip (structure only; do not inherit its assumptions)",
     JSON.stringify(example, null, 2),
-    "When the essential information is available, return one complete trip-planner version 1 JSON object only.",
+    "When the essential information is available, return one complete trip-planner version 2 JSON object only. Include approximate destination-center coordinates when known; omit uncertain locations.",
   ].join("\n\n");
 }

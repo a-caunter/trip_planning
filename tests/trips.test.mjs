@@ -130,9 +130,9 @@ test("unknown fields, missing fields, currencies, and unsupported versions produ
     ],
     [
       (file) => {
-        file.version = 2;
+        file.version = 3;
       },
-      /Unsupported trip file version 2/,
+      /Unsupported trip file version 3/,
     ],
     [
       (file) => {

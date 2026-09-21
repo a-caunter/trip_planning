@@ -49,6 +49,7 @@ export function duplicateTrip(library: TripLibrary, id: string) {
       ...stop,
       id: crypto.randomUUID(),
       costs: { ...stop.costs },
+      ...(stop.location ? { location: { ...stop.location } } : {}),
     })),
   });
 }
@@ -129,6 +130,7 @@ export function loadLibrary(storage: StorageAccess): LoadedLibrary {
             color: stop.color || COLORS[index % COLORS.length],
             notes: stop.notes || "",
             costs: normalizeCosts(stop.costs),
+            ...(stop.location !== undefined ? { location: { ...stop.location } } : {}),
           }),
         ),
       };

@@ -19,6 +19,7 @@ import {
   CalendarDays,
   Columns3,
   GripVertical,
+  Globe2,
   Plus,
   Settings2,
   SlidersHorizontal,
@@ -34,6 +35,7 @@ import {
 } from "./budget";
 import { DestinationDetails } from "./components/DestinationDetails";
 import { TripBudget } from "./components/TripBudget";
+import { TripGlobe } from "./components/TripGlobe";
 
 import type { Destination, TripPlan } from "./trips/model";
 import {
@@ -174,7 +176,7 @@ export function TripWorkspace({
 }) {
   const [editError, setEditError] = useState("");
   const [settingsError, setSettingsError] = useState("");
-  const [activeView, setActiveView] = useState<"itinerary" | "budget">(
+  const [activeView, setActiveView] = useState<"itinerary" | "budget" | "globe">(
     "itinerary",
   );
   const [detailsId, setDetailsId] = useState<string | null>(null);
@@ -391,6 +393,14 @@ export function TripWorkspace({
             <Wallet size={17} aria-hidden="true" />
             Budget
           </button>
+          <button
+            type="button"
+            aria-current={activeView === "globe" ? "page" : undefined}
+            onClick={() => setActiveView("globe")}
+          >
+            <Globe2 size={17} aria-hidden="true" />
+            Globe
+          </button>
         </nav>
         <button
           className="budget-shortcut"
@@ -546,6 +556,9 @@ export function TripWorkspace({
             the handle to reorder your stops.
           </p>
         </>
+      ) : activeView === "globe" ? (
+        <TripGlobe destinations={scheduledDestinations}
+          onLocationChange={(id, location) => updateDestination(id, { location })} />
       ) : (
         <TripBudget
           destinations={plan.destinations}

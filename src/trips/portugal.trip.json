@@ -1,6 +1,6 @@
 {
   "format": "trip-planner",
-  "version": 1,
+  "version": 2,
   "trip": {
     "title": "Two weeks exploring Portugal",
     "description": "A relaxed trip focused on food, architecture, and walks. Prices are illustrative planning estimates, not researched quotes.",
@@ -9,6 +9,7 @@
     "destinations": [
       {
         "name": "Lisbon",
+        "location": { "latitude": 38.7223, "longitude": -9.1393 },
         "durationWeeks": 1,
         "notes": "Explore neighborhoods and consider a Sintra day trip.",
         "costs": {
@@ -21,6 +22,7 @@
       },
       {
         "name": "Porto",
+        "location": { "latitude": 41.1579, "longitude": -8.6291 },
         "durationWeeks": 1,
         "notes": "Include the train from Lisbon in this stop's transport.",
         "costs": {

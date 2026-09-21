@@ -84,7 +84,7 @@ export function ImportTrip({
             rows={8}
             spellCheck={false}
             value={source}
-            placeholder='Paste { "format": "trip-planner", "version": 1, "trip": ... }'
+            placeholder='Paste { "format": "trip-planner", "version": 2, "trip": ... }'
             onChange={(event) => {
               ++readSequence.current;
               setReading(false);

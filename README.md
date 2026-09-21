@@ -29,12 +29,22 @@ npm run dev
 Authoring materials are also downloadable in the app and available here:
 
 - [Authoring guide](src/trips/authoring-guide.md)
-- [Version 1 JSON Schema](src/trips/trip.schema.json)
+- [Version 2 JSON Schema](src/trips/trip.schema.json)
 - [Example Portugal itinerary](src/trips/portugal.trip.json) (illustrative prices)
 
-The file format requires a `trip-planner` envelope with `version: 1`, and a trip title, start date, currency, and ordered destinations. Notes, descriptions, colors, and estimates are optional. Rates use the explicit names `lodgingPerNight` and `foodPerDay`. Internal IDs and calculated totals/dates are excluded. Unsupported versions and unknown fields produce errors rather than silently changing data.
+The file format requires a `trip-planner` envelope with `version: 2`, and a trip title, start date, currency, and ordered destinations. Notes, descriptions, colors, locations, and estimates are optional. Version 1 files without coordinates still import; new exports use version 2 and need an updated app to open. Rates use the explicit names `lodgingPerNight` and `foodPerDay`. Internal IDs and calculated totals/dates are excluded. Unsupported versions and unknown fields produce errors rather than silently changing data.
 
 Trips support up to **100 destinations**, **520 total whole weeks**, and **1 MiB of UTF-8 JSON** (including its exported formatting). Titles and destination names allow 200 characters; descriptions and stop notes allow 10,000 each. Whole-party prices range from 0 to 1,000,000,000 with up to two decimal places. Unknown prices are `null`; zero is an explicit estimate.
+
+## Interactive globe
+
+- Open **Globe** beside Itinerary and Budget. Drag to rotate, scroll or pinch to zoom, or use the camera buttons. Reset returns to the first located destination at a whole-globe zoom.
+- Numbered markers and animated arcs follow itinerary order. Select a stop in the route list to center it and see its dates and duration. Reordering the itinerary changes the route.
+- Use **Edit location** to save or clear latitude/longitude in decimal degrees. Both values are required; latitude ranges from −90 to 90 and longitude from −180 to 180. Cancel, Close, and Escape discard the draft.
+- Locations are optional: existing trips open normally, with missing locations shown in the route list. Connections only join adjacent located stops; they do not jump over gaps or add a return trip. Consecutive stops at the same location do not draw a zero-length arc.
+- The AI authoring prompt requests approximate destination centers when known. Coordinates persist with the trip and are included in exported files. Renaming a destination preserves its coordinates; update its location if it represents a different place.
+- The globe is loaded on demand, respects reduced-motion preferences, and releases its rendering resources on exit. The route list and editor remain usable when WebGL is unavailable.
+- Geography is bundled locally from the public-domain [Natural Earth land dataset](src/globe/ATTRIBUTION.md). No map service, geocoding request, or API key is needed. Arcs illustrate stop sequence, not actual flight or road paths.
 
 ## Cost estimates
 

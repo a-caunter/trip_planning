@@ -13,6 +13,11 @@ export const MAX_FILE_BYTES = 1024 * 1024;
 export const MAX_DESTINATIONS = 100;
 export const MAX_WEEKS = 520;
 
+export type DestinationLocation = {
+  latitude: number;
+  longitude: number;
+};
+
 export type Destination = {
   id: string;
   name: string;
@@ -20,6 +25,7 @@ export type Destination = {
   color: string;
   notes: string;
   costs: CostEstimates;
+  location?: DestinationLocation;
 };
 export type TripPlan = {
   title: string;

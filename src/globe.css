@@ -1,0 +1,58 @@
+.trip-globe { max-width: 1440px; margin: 26px auto 0; }
+.globe-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 20px; }
+.globe-heading h2 { margin: 0; font-size: clamp(1.5rem, 3vw, 2rem); letter-spacing: -0.04em; }
+.globe-heading p:last-child { color: #64748b; margin: 7px 0 0; font-size: .9rem; }
+.globe-count { display: inline-flex; align-items: center; gap: 7px; color: #526377; background: #eaf0f5; padding: 9px 12px; border-radius: 24px; font-size: .8rem; white-space: nowrap; }
+.globe-layout { display: grid; grid-template-columns: minmax(0, 1fr) 330px; border: 1px solid #dce4ec; border-radius: 18px; overflow: hidden; background: white; }
+.globe-map-panel { min-width: 0; background: radial-gradient(ellipse at 50% 40%, #fff 0%, #eaf0f7 65%, #e3ebf4 100%); }
+.globe-stage { position: relative; }
+.globe-canvas { width: 100%; height: 550px; overflow: hidden; cursor: grab; touch-action: none; }
+.globe-canvas:active { cursor: grabbing; }
+.globe-controls { position: absolute; display: flex; gap: 3px; align-items: center; left: 50%; bottom: 48px; transform: translateX(-50%); padding: 6px; border: 1px solid #dae3ed; border-radius: 12px; background: #ffffffed; box-shadow: 0 5px 22px #1b3d6410; }
+.globe-controls button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; border: 0; border-radius: 7px; color: #334b64; background: transparent; min-width: 34px; min-height: 36px; padding: 7px; }
+.globe-controls button:hover { background: #edf2f7; }
+.globe-controls .globe-reset { font-size: .78rem; padding: 7px 10px; }
+.globe-control-divider { width: 1px; height: 20px; background: #dde5ee; margin: 0 3px; }
+.globe-help { position: absolute; bottom: 14px; left: 0; width: 100%; margin: 0; text-align: center; pointer-events: none; font-size: .76rem; color: #5b7189; }
+.globe-selection { min-height: 91px; display: flex; flex-direction: column; justify-content: center; gap: 6px; padding: 20px 26px; border-top: 1px solid #dce4ec; background: #ffffff8a; overflow-wrap: anywhere; }
+.globe-selection strong { color: #253d55; }
+.globe-selection span { font-size: .82rem; color: #5b6d81; }
+.globe-route-panel { border-left: 1px solid #dce4ec; min-width: 0; }
+.globe-route-heading { display: flex; justify-content: space-between; align-items: center; padding: 24px 22px 16px; }
+.globe-route-heading h3 { margin: 0; font-size: 1rem; }
+.globe-route-heading span { color: #64748b; font-size: .78rem; }
+.globe-missing { background: #fff8e9; color: #866018; border-radius: 8px; margin: 0 16px 10px; padding: 10px 12px; font-size: .78rem; line-height: 1.5; }
+.globe-stop-list { list-style: none; padding: 0 12px 12px; margin: 0; max-height: 540px; overflow-y: auto; }
+.globe-stop-list li { display: flex; gap: 12px; position: relative; padding: 14px 10px; border: 1px solid transparent; border-radius: 10px; }
+.globe-stop-list li.is-selected { background: #f0f5fb; border-color: #d7e3ef; }
+.globe-stop-list li:not(:last-child)::after { content: ""; position: absolute; left: 24px; top: 49px; bottom: 1px; width: 1px; background: #dce4ec; }
+.globe-stop-number { flex: 0 0 28px; height: 28px; border-radius: 50%; color: var(--stop-color); border: 2px solid var(--stop-color); background: white; display: flex; justify-content: center; align-items: center; font-size: .75rem; font-weight: 700; }
+.globe-stop-content { min-width: 0; flex: 1; display: flex; align-items: flex-start; flex-direction: column; }
+.globe-stop-select { display: flex; flex-direction: column; gap: 6px; text-align: left; border: 0; background: transparent; padding: 3px 0 0; color: #23364c; max-width: 100%; }
+.globe-stop-select strong { font-size: .9rem; overflow-wrap: anywhere; }
+.globe-stop-select span, .globe-location { color: #64748b; font-size: .75rem; line-height: 1.4; }
+.globe-location { margin-top: 6px; }
+.globe-location.is-missing { color: #946520; }
+.globe-stop-content .text-button { font-size: .76rem; padding: 7px 0 0; }
+.globe-caption { display: flex; justify-content: space-between; gap: 10px; color: #64748b; font-size: .75rem; line-height: 1.5; margin: 13px 3px; }
+.globe-marker { pointer-events: auto; border: 2px solid white; background: var(--stop-color); color: white; border-radius: 50%; min-width: 25px; height: 25px; font: 700 11px/1 Inter, sans-serif; padding: 3px; box-shadow: 0 2px 6px #102b4f60; }
+.globe-marker:hover, .globe-marker.is-selected { outline: 2px solid #ffffffb3; outline-offset: 3px; z-index: 2; }
+.globe-placeholder { min-height: 550px; display: flex; align-items: center; justify-content: center; flex-direction: column; padding: 30px; text-align: center; color: #526a83; }
+.globe-placeholder p { max-width: 390px; line-height: 1.6; margin: 0; font-size: .9rem; }
+.trip-globe button:focus-visible { outline: 3px solid #2563eb; outline-offset: 3px; }
+@media (max-width: 900px) {
+  .globe-layout { grid-template-columns: minmax(0, 1fr); }
+  .globe-route-panel { border-left: 0; border-top: 1px solid #dce4ec; }
+  .globe-stop-list { max-height: 430px; }
+  .globe-canvas, .globe-placeholder { height: 460px; min-height: 460px; }
+}
+@media (max-width: 520px) {
+  .globe-heading { align-items: flex-start; flex-direction: column; gap: 12px; }
+  .globe-canvas, .globe-placeholder { height: 380px; min-height: 380px; }
+  .globe-controls { gap: 0; padding: 4px; }
+  .globe-controls button { min-width: 30px; padding: 5px; }
+  .globe-controls .globe-reset { padding: 5px; }
+  .globe-control-divider { margin: 0 1px; }
+  .globe-caption { flex-direction: column; gap: 3px; }
+  .globe-selection { padding: 17px; }
+}

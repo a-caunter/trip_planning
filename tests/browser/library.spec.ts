@@ -134,7 +134,7 @@ test("pastes fenced JSON, previews without mutation, imports, downloads, and imp
     .getByLabel("Choose trip file", { exact: true })
     .setInputFiles(path!);
   await expect(page.getByLabel("Trip JSON", { exact: true })).toHaveValue(
-    /"version": 1/,
+    /"version": 2/,
   );
   await page.getByRole("button", { name: "Review trip" }).click();
   await page.getByRole("button", { name: "Import as new trip" }).click();

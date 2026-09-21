@@ -2,13 +2,13 @@ import Ajv from "ajv";
 import type { ErrorObject } from "ajv";
 import schema from "./trip.schema.json" with { type: "json" };
 import { COLORS, MAX_FILE_BYTES, MAX_WEEKS, isCalendarDate } from "./model.ts";
-import type { TripPlan } from "./model.ts";
+import type { DestinationLocation, TripPlan } from "./model.ts";
 import type { Currency } from "../budget.ts";
 
 export { schema as tripSchema };
 export type TripFile = {
   format: "trip-planner";
-  version: 1;
+  version: 1 | 2;
   trip: {
     title: string;
     description?: string;
@@ -19,6 +19,7 @@ export type TripFile = {
       durationWeeks: number;
       notes?: string;
       color?: string;
+      location?: DestinationLocation;
       costs?: Partial<
         Record<
           "flights" | "lodgingPerNight" | "foodPerDay" | "transport" | "misc",
@@ -33,7 +34,11 @@ export type ValidationResult =
   | { ok: false; errors: string[] };
 const ajv = new Ajv({ allErrors: true, strict: true, multipleOfPrecision: 8 });
 ajv.addFormat("date", { type: "string", validate: isCalendarDate });
-const validateV1 = ajv.compile<TripFile>(schema);
+const legacySchema = structuredClone(schema);
+legacySchema.properties.version.const = 1;
+delete (legacySchema.definitions.destination.properties as Record<string, unknown>).location;
+const validateV1 = ajv.compile<TripFile>(legacySchema);
+const validateV2 = ajv.compile<TripFile>(schema);
 
 function describeError(error: ErrorObject) {
   const path = error.instancePath
@@ -68,19 +73,21 @@ export function validateTripFile(value: unknown): ValidationResult {
     value &&
     typeof value === "object" &&
     "version" in value &&
-    value.version !== 1
+    value.version !== 1 && value.version !== 2
   ) {
     return {
       ok: false,
       errors: [
-        `Unsupported trip file version ${String(value.version)}. This app supports version 1.`,
+        `Unsupported trip file version ${String(value.version)}. This app supports versions 1 and 2.`,
       ],
     };
   }
-  if (!validateV1(value))
+  const validate = value && typeof value === "object" && "version" in value && value.version === 1
+    ? validateV1 : validateV2;
+  if (!validate(value))
     return {
       ok: false,
-      errors: (validateV1.errors ?? []).slice(0, 20).map(describeError),
+      errors: (validate.errors ?? []).slice(0, 20).map(describeError),
     };
   for (const [index, stop] of value.trip.destinations.entries()) {
     for (const [field, amount] of Object.entries(stop.costs ?? {})) {
@@ -142,6 +149,7 @@ export function fileToPlan(file: TripFile): TripPlan {
       durationWeeks: stop.durationWeeks,
       notes: stop.notes ?? "",
       color: stop.color ?? COLORS[index % COLORS.length],
+      ...(stop.location ? { location: { ...stop.location } } : {}),
       costs: {
         flights: stop.costs?.flights ?? null,
         lodging: stop.costs?.lodgingPerNight ?? null,
@@ -155,7 +163,7 @@ export function fileToPlan(file: TripFile): TripPlan {
 export function planToFile(plan: TripPlan): TripFile {
   return {
     format: "trip-planner",
-    version: 1,
+    version: 2,
     trip: {
       title: plan.title,
       description: plan.description,
@@ -166,6 +174,7 @@ export function planToFile(plan: TripPlan): TripFile {
         durationWeeks: stop.durationWeeks,
         notes: stop.notes,
         color: stop.color,
+        ...(stop.location !== undefined ? { location: stop.location } : {}),
         costs: {
           flights: stop.costs.flights,
           lodgingPerNight: stop.costs.lodging,
