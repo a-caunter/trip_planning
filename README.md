@@ -1,6 +1,6 @@
 # Trip planner
 
-A React and TypeScript trip planner with a reorderable weekly itinerary, a consolidated budget, and a browser-based library of named trips.
+A React and TypeScript trip planner with a reorderable day-based itinerary, a consolidated budget, a rolling Schengen day tracker, and a browser-based library of named trips.
 
 ## Run locally
 
@@ -29,12 +29,18 @@ npm run dev
 Authoring materials are also downloadable in the app and available here:
 
 - [Authoring guide](src/trips/authoring-guide.md)
-- [Version 2 JSON Schema](src/trips/trip.schema.json)
+- [Version 3 JSON Schema](src/trips/trip.schema.json)
 - [Example Portugal itinerary](src/trips/portugal.trip.json) (illustrative prices)
 
-The file format requires a `trip-planner` envelope with `version: 2`, and a trip title, start date, currency, and ordered destinations. Notes, descriptions, colors, locations, and estimates are optional. Version 1 files without coordinates still import; new exports use version 2 and need an updated app to open. Rates use the explicit names `lodgingPerNight` and `foodPerDay`. Internal IDs and calculated totals/dates are excluded. Unsupported versions and unknown fields produce errors rather than silently changing data.
+The file format requires a `trip-planner` envelope with `version: 3`, and a trip title, start date, currency, and ordered destinations with `durationDays`. Notes, descriptions, colors, locations, Schengen flags, and estimates are optional. Older saved trips and version 1 and 2 files convert each week to seven days. Rates use the explicit names `lodgingPerNight` and `foodPerDay`. The start date and ordered durations determine all segment dates when the trip is opened. Unsupported versions and unknown fields produce errors.
 
-Trips support up to **100 destinations**, **520 total whole weeks**, and **1 MiB of UTF-8 JSON** (including its exported formatting). Titles and destination names allow 200 characters; descriptions and stop notes allow 10,000 each. Whole-party prices range from 0 to 1,000,000,000 with up to two decimal places. Unknown prices are `null`; zero is an explicit estimate.
+Trips support up to **100 destinations**, **3640 total days**, and **1 MiB of UTF-8 JSON** (including its exported formatting). Titles and destination names allow 200 characters; descriptions and stop notes allow 10,000 each. Whole-party prices range from 0 to 1,000,000,000 with up to two decimal places. Unknown prices are `null`; zero is an explicit estimate.
+
+## Segment dates and Schengen days
+
+- Edit **Days** or **End** on a destination row. The planner updates the other field and shifts all later stops. Each end date is the start of the next stop.
+- Open destination details, check **Count this stop in the Schengen Zone tracker**, and select **Save details**. The flag is stored with the trip and included in exported JSON.
+- The **Schengen Zone** tab plots the rolling 180-day count for each scheduled date and shows the highest count above the chart. Shading and labels identify marked stops from their start through the day before their end date. Point, tap, or use the arrow keys on the chart to inspect the count for a date and the preceding 179 days.
 
 ## Interactive globe
 
@@ -48,8 +54,8 @@ Trips support up to **100 destinations**, **520 total whole weeks**, and **1 MiB
 
 ## Cost estimates
 
-- Open the small settings button beside a destination to edit its estimates. The dialog previews the total; **Save estimates** commits changes, while **Cancel**, Close, and Escape discard the draft.
-- Flights, transport, and miscellaneous spending are one-time amounts for that stop. Lodging is a nightly rate and food is a daily rate. Each itinerary week represents **7 days and 7 nights**; changing the duration recalculates both.
+- Open the small settings button beside a destination to edit its estimates. The dialog previews the total. **Save details** commits changes, while **Cancel**, Close, and Escape discard the draft.
+- Flights, transport, and miscellaneous spending are one-time amounts for that stop. Each itinerary day adds one night of lodging and one day of food. Changing the duration recalculates both.
 - Estimates cover the entire travel party. Assign each flight or transfer to one destination to avoid counting it twice.
 - Blank values mean not yet estimated; enter zero for categories with no expected cost. Prices accept up to two decimal places. Partial budgets total the available estimates.
 - The **Budget** view includes destination and category totals, average daily cost, estimate completeness, a category chart, and destination comparison bars. Click a destination or bar to edit it.

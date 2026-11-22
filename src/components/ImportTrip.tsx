@@ -4,10 +4,11 @@ import { calculateTripBudget, formatMoney } from "../budget";
 import { fileToPlan, parseTripFile } from "../trips/files";
 import {
   MAX_FILE_BYTES,
-  addWeeks,
+  MAX_TRIP_DAYS,
+  addDays,
   parseIsoDate,
   toIsoDate,
-  totalWeeks,
+  totalDays,
 } from "../trips/model";
 import type { TripPlan } from "../trips/model";
 
@@ -84,7 +85,7 @@ export function ImportTrip({
             rows={8}
             spellCheck={false}
             value={source}
-            placeholder='Paste { "format": "trip-planner", "version": 2, "trip": ... }'
+            placeholder='Paste { "format": "trip-planner", "version": 3, "trip": ... }'
             onChange={(event) => {
               ++readSequence.current;
               setReading(false);
@@ -95,7 +96,7 @@ export function ImportTrip({
           />
         </div>
         <p className="budget-note">
-          JSON or one JSON code block · up to 1 MiB · 100 stops · 520 weeks
+          JSON or one JSON code block · up to 1 MiB · 100 stops · {MAX_TRIP_DAYS} days
         </p>
         {reading && <p role="status">Reading file…</p>}
         {errors.length > 0 && (
@@ -119,9 +120,9 @@ export function ImportTrip({
                 <dd>
                   {preview.tripStartDate} →{" "}
                   {toIsoDate(
-                    addWeeks(
+                    addDays(
                       parseIsoDate(preview.tripStartDate),
-                      totalWeeks(preview),
+                      totalDays(preview),
                     ),
                   )}
                 </dd>
@@ -129,7 +130,7 @@ export function ImportTrip({
               <div>
                 <dt>Duration</dt>
                 <dd>
-                  {totalWeeks(preview)} weeks · {budget.days} days / nights
+                  {budget.days} {budget.days === 1 ? "day" : "days"}
                 </dd>
               </div>
               <div>
@@ -151,7 +152,7 @@ export function ImportTrip({
               {preview.destinations.map((stop) => (
                 <li key={stop.id}>
                   <span>{stop.name}</span>
-                  <span>{stop.durationWeeks}w</span>
+                  <span>{stop.durationDays} {stop.durationDays === 1 ? "day" : "days"}</span>
                 </li>
               ))}
             </ol>

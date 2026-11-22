@@ -5,7 +5,7 @@ import { buildGlobeRoute, isValidLocation } from "../src/globe/route.ts";
 import { fileToPlan, planToFile, validateTripFile, parseTripFile, serializeTrip } from "../src/trips/files.ts";
 import { addTrip, duplicateTrip, loadLibrary, saveLibrary } from "../src/trips/library.ts";
 const example = () => JSON.parse(readFileSync(new URL("../src/trips/portugal.trip.json", import.meta.url), "utf8"));
-const stop = (id, latitude, longitude) => ({ id, name: id, durationWeeks: 1, color: "#2563eb", ...(latitude === undefined ? {} : { location: { latitude, longitude } }) });
+const stop = (id, latitude, longitude) => ({ id, name: id, color: "#2563eb", ...(latitude === undefined ? {} : { location: { latitude, longitude } }) });
 
 test("coordinates accept zero and boundaries, reject incomplete and nonfinite values", () => {
   for (const location of [{ latitude: 0, longitude: 0 }, { latitude: -90, longitude: 180 }, { latitude: 90, longitude: -180 }]) {
@@ -23,13 +23,15 @@ test("coordinates accept zero and boundaries, reject incomplete and nonfinite va
   assert.equal(validateTripFile(file).ok, false);
 });
 
-test("v1 imports without locations; v2 retains locations across export, storage and duplication", () => {
+test("v1 imports without locations; current trips retain locations across export, storage and duplication", () => {
   const old = example(); old.version = 1;
-  old.trip.destinations.forEach((s) => delete s.location);
+  old.trip.destinations = old.trip.destinations.map(({ location, durationDays, schengen, ...s }) => ({
+    ...s, durationWeeks: durationDays / 7,
+  }));
   assert.equal(validateTripFile(old).ok, true);
   const legacy = fileToPlan(old);
   assert.equal(legacy.destinations[0].location, undefined);
-  assert.equal(planToFile(legacy).version, 2);
+  assert.equal(planToFile(legacy).version, 3);
   old.trip.destinations[0].location = { latitude: 0, longitude: 0 };
   assert.equal(validateTripFile(old).ok, false);
 

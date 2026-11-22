@@ -32,7 +32,7 @@ test.beforeEach(async ({ page }) => {
 test("edits, persists, and consolidates estimates across the trip", async ({
   page,
 }, testInfo) => {
-  await page.getByRole("button", { name: "Cost details for Paris" }).click();
+  await page.getByRole("button", { name: "Details for Paris", exact: true }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
   await expect(dialog).toContainText("14 days / 14 nights");
@@ -42,10 +42,10 @@ test("edits, persists, and consolidates estimates across the trip", async ({
   await page.getByLabel("Transport", { exact: false }).fill("60");
   await page.getByLabel("Miscellaneous", { exact: false }).fill("0");
   await expect(dialog.locator(".stop-total")).toContainText("$2,283.60");
-  await page.getByRole("button", { name: "Save estimates" }).click();
+  await page.getByRole("button", { name: "Save details" }).click();
   await expect(dialog).not.toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Cost details for Paris" }),
+    page.getByRole("button", { name: "Details for Paris", exact: true }),
   ).toBeFocused();
   await page.getByRole("button", { name: "Budget", exact: true }).click();
   await expect(page.locator("tfoot")).toContainText("$2,283.60");
@@ -57,7 +57,7 @@ test("edits, persists, and consolidates estimates across the trip", async ({
   ).toBeVisible();
   await page.getByRole("button", { name: "Rome", exact: true }).click();
   await dialog.getByLabel("Flights", { exact: false }).fill("150");
-  await page.getByRole("button", { name: "Save estimates" }).click();
+  await page.getByRole("button", { name: "Save details" }).click();
   await expect(page.locator("tfoot")).toContainText("$2,433.60");
   await page.screenshot({
     path: testInfo.outputPath("budget-desktop.png"),
@@ -79,50 +79,53 @@ test("edits, persists, and consolidates estimates across the trip", async ({
 test("validates prices, cancels drafts, and contains keyboard focus", async ({
   page,
 }) => {
-  await page.getByRole("button", { name: "Cost details for Paris" }).click();
+  await page.getByRole("button", { name: "Details for Paris", exact: true }).click();
   await page.getByLabel("Flights", { exact: false }).fill("-10");
   await expect(
-    page.getByRole("button", { name: "Save estimates" }),
+    page.getByRole("button", { name: "Save details" }),
   ).toBeDisabled();
   await page.getByLabel("Flights", { exact: false }).fill("1.999");
   await expect(
-    page.getByRole("button", { name: "Save estimates" }),
+    page.getByRole("button", { name: "Save details" }),
   ).toBeDisabled();
   await page.getByLabel("Flights", { exact: false }).fill("100");
-  await page.getByRole("button", { name: "Save estimates" }).focus();
+  await page.getByRole("button", { name: "Save details" }).focus();
   await page.keyboard.press("Tab");
   await expect(
     page.getByRole("button", { name: "Close details" }),
   ).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).not.toBeVisible();
-  await page.getByRole("button", { name: "Cost details for Paris" }).click();
+  await page.getByRole("button", { name: "Details for Paris", exact: true }).click();
   await expect(page.getByLabel("Flights", { exact: false })).toHaveValue("");
   await page.getByLabel("Flights", { exact: false }).fill("200");
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
-  await page.getByRole("button", { name: "Cost details for Paris" }).click();
+  await page.getByRole("button", { name: "Details for Paris", exact: true }).click();
   await expect(page.getByLabel("Flights", { exact: false })).toHaveValue("");
 });
 
 test("duration changes, reordering, and removal preserve the correct costs", async ({
   page,
 }) => {
-  await page.getByRole("button", { name: "Cost details for Paris" }).click();
+  await page.getByRole("button", { name: "Details for Paris", exact: true }).click();
   await page.getByLabel("Flights", { exact: false }).fill("400");
   await page.getByLabel("Lodging", { exact: false }).fill("100");
-  await page.getByRole("button", { name: "Save estimates" }).click();
+  await page.getByRole("button", { name: "Save details" }).click();
   await page
-    .getByRole("textbox", { name: "Weeks", exact: true })
+    .getByRole("textbox", { name: "Days", exact: true })
     .first()
-    .fill("3");
+    .fill("21");
   await page
-    .getByRole("textbox", { name: "Weeks", exact: true })
+    .getByRole("textbox", { name: "Days", exact: true })
     .first()
     .blur();
   await expect(page.locator(".budget-shortcut")).toContainText("$2,500.00");
   await page.getByRole("button", { name: "Reorder Paris" }).focus();
+  const dragStatus = page.locator("[role='status'][aria-live='assertive']");
   await page.keyboard.press("Space");
+  await expect(dragStatus).toContainText("moved over droppable area paris");
   await page.keyboard.press("ArrowDown");
+  await expect(dragStatus).toContainText("moved over droppable area rome");
   await page.keyboard.press("Space");
   await expect(
     page.getByRole("textbox", { name: "Destination", exact: true }).first(),
@@ -157,7 +160,7 @@ test("budget and editor fit a mobile viewport", async ({ page }, testInfo) => {
   await page.getByLabel("Lodging", { exact: false }).fill("100");
   await expect(dialog.locator(".stop-total")).toBeInViewport();
   await page.screenshot({ path: testInfo.outputPath("details-mobile.png") });
-  await page.getByRole("button", { name: "Save estimates" }).click();
+  await page.getByRole("button", { name: "Save details" }).click();
   await expect(page.locator("tfoot")).toContainText("$1,400.00");
   expect(
     await page.evaluate(

@@ -11,7 +11,8 @@ export const COLORS = [
 ];
 export const MAX_FILE_BYTES = 1024 * 1024;
 export const MAX_DESTINATIONS = 100;
-export const MAX_WEEKS = 520;
+export const DAYS_PER_WEEK = 7;
+export const MAX_TRIP_DAYS = 520 * DAYS_PER_WEEK;
 
 export type DestinationLocation = {
   latitude: number;
@@ -21,7 +22,8 @@ export type DestinationLocation = {
 export type Destination = {
   id: string;
   name: string;
-  durationWeeks: number;
+  durationDays: number;
+  schengen: boolean;
   color: string;
   notes: string;
   costs: CostEstimates;
@@ -33,6 +35,11 @@ export type TripPlan = {
   tripStartDate: string;
   currency: Currency;
   destinations: Destination[];
+};
+export type ScheduledDestination = Destination & {
+  startDate: Date;
+  endDate: Date;
+  startDay: number;
 };
 export type StoredTrip = {
   id: string;
@@ -63,22 +70,43 @@ export function isCalendarDate(value: string) {
     toIsoDate(parseIsoDate(value)) === value
   );
 }
-export function addWeeks(date: Date, weeks: number) {
+export function addDays(date: Date, days: number) {
   const result = new Date(date);
-  result.setDate(result.getDate() + weeks * 7);
+  result.setDate(result.getDate() + days);
   return result;
 }
-export function totalWeeks(plan: TripPlan) {
+export function daysBetween(start: Date, end: Date) {
+  // Compare calendar dates at UTC midnight so DST cannot change the duration.
+  const midnight = (date: Date) =>
+    new Date(0).setUTCFullYear(date.getFullYear(), date.getMonth(), date.getDate());
+  return (midnight(end) - midnight(start)) / 86_400_000;
+}
+export function totalDays(plan: TripPlan) {
   return plan.destinations.reduce(
-    (sum, destination) => sum + destination.durationWeeks,
+    (sum, destination) => sum + destination.durationDays,
     0,
   );
+}
+export function scheduleDestinations(plan: TripPlan): ScheduledDestination[] {
+  const start = parseIsoDate(plan.tripStartDate);
+  let startDay = 0;
+  return plan.destinations.map((destination) => {
+    const scheduled = {
+      ...destination,
+      startDate: addDays(start, startDay),
+      endDate: addDays(start, startDay + destination.durationDays),
+      startDay,
+    };
+    startDay += destination.durationDays;
+    return scheduled;
+  });
 }
 export function createDestination(index: number): Destination {
   return {
     id: crypto.randomUUID(),
     name: `Destination ${index}`,
-    durationWeeks: 1,
+    durationDays: DAYS_PER_WEEK,
+    schengen: false,
     color: COLORS[(index - 1) % COLORS.length],
     notes: "",
     costs: normalizeCosts(),

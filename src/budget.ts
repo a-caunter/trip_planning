@@ -50,12 +50,12 @@ export function formatMoney(amount: number, currency: Currency) {
 export type BudgetStop = {
   id: string;
   name: string;
-  durationWeeks: number;
+  durationDays: number;
   costs: CostEstimates;
 };
 
 export function calculateStopBudget(stop: BudgetStop) {
-  const days = Math.max(1, Math.round(stop.durationWeeks * 7));
+  const days = stop.durationDays;
   const costs = normalizeCosts(stop.costs);
   // Add integer cents so the table, charts, and editor always agree.
   const cents = Object.fromEntries(

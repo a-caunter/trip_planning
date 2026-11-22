@@ -7,7 +7,6 @@ import {
   Utensils,
 } from "lucide-react";
 import {
-  BudgetStop,
   COST_CATEGORIES,
   CostCategory,
   CostEstimates,
@@ -17,6 +16,7 @@ import {
   formatMoney,
 } from "../budget";
 import { Dialog } from "./Dialog";
+import type { Destination } from "../trips/model";
 
 const ICONS = {
   flights: Plane,
@@ -33,12 +33,13 @@ export function DestinationDetails({
   onSave,
   onClose,
 }: {
-  destination: BudgetStop;
+  destination: Destination;
   currency: Currency;
   dates: string;
-  onSave: (costs: CostEstimates) => void;
+  onSave: (updates: Pick<Destination, "costs" | "schengen">) => void;
   onClose: () => void;
 }) {
+  const [schengen, setSchengen] = useState(destination.schengen);
   const [draft, setDraft] = useState(
     () =>
       Object.fromEntries(
@@ -73,10 +74,18 @@ export function DestinationDetails({
       <form
         onSubmit={(event) => {
           event.preventDefault();
-          if (!invalid.length) onSave(costs);
+          if (!invalid.length) onSave({ costs, schengen });
         }}
       >
         <div className="dialog-body">
+          <label className="column-toggle destination-schengen">
+            <input
+              type="checkbox"
+              checked={schengen}
+              onChange={(event) => setSchengen(event.target.checked)}
+            />
+            Count this stop in the Schengen Zone tracker
+          </label>
           <div className="section-heading">
             <div>
               <h3>Cost estimates</h3>
@@ -132,9 +141,8 @@ export function DestinationDetails({
             })}
           </div>
           <p className="budget-note">
-            Lodging uses 7 nights and food uses 7 days per week. These totals
-            update when you change the trip duration. Assign each flight or
-            transfer to one stop to count it once.
+            Each itinerary day adds one night of lodging and one day of food.
+            Assign each flight or transfer to one stop to count it once.
           </p>
           <p className="budget-note">
             Leave unknown amounts blank. Enter 0 for costs you don’t expect.
@@ -166,7 +174,7 @@ export function DestinationDetails({
               type="submit"
               disabled={invalid.length > 0}
             >
-              Save estimates
+              Save details
             </button>
           </div>
         </footer>

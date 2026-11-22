@@ -1,12 +1,12 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Trip planner portable trip v2",
+  "title": "Trip planner portable trip v3",
   "type": "object",
   "additionalProperties": false,
   "required": ["format", "version", "trip"],
   "properties": {
     "format": { "const": "trip-planner" },
-    "version": { "const": 2 },
+    "version": { "const": 3 },
     "trip": {
       "type": "object",
       "additionalProperties": false,
@@ -25,7 +25,7 @@
           "minItems": 1,
           "maxItems": 100,
           "items": { "$ref": "#/definitions/destination" },
-          "description": "Ordered stops. Total duration must not exceed 520 weeks."
+          "description": "Ordered stops. Total duration must not exceed 3640 days."
         }
       }
     }
@@ -41,10 +41,14 @@
     "destination": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "durationWeeks"],
+      "required": ["name", "durationDays"],
       "properties": {
         "name": { "type": "string", "pattern": "\\S", "maxLength": 200 },
-        "durationWeeks": { "type": "integer", "minimum": 1, "maximum": 520 },
+        "durationDays": { "type": "integer", "minimum": 1, "maximum": 3640 },
+        "schengen": {
+          "type": "boolean",
+          "description": "Whether the stop's days count toward the Schengen tracker. Defaults to false."
+        },
         "notes": { "type": "string", "maxLength": 10000 },
         "color": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
         "location": {
@@ -67,11 +71,11 @@
             },
             "lodgingPerNight": {
               "$ref": "#/definitions/amount",
-              "description": "Nightly lodging rate; seven nights per week."
+              "description": "Nightly lodging rate multiplied by durationDays."
             },
             "foodPerDay": {
               "$ref": "#/definitions/amount",
-              "description": "Daily food rate; seven days per week."
+              "description": "Daily food rate multiplied by durationDays."
             },
             "transport": {
               "$ref": "#/definitions/amount",

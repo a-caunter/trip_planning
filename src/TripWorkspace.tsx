@@ -17,6 +17,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import {
   CalendarDays,
+  CalendarRange,
   Columns3,
   GripVertical,
   Globe2,
@@ -36,23 +37,22 @@ import {
 import { DestinationDetails } from "./components/DestinationDetails";
 import { TripBudget } from "./components/TripBudget";
 import { TripGlobe } from "./components/TripGlobe";
+import { TripSchengen } from "./components/TripSchengen";
 
-import type { Destination, TripPlan } from "./trips/model";
+import type { Destination, ScheduledDestination, TripPlan } from "./trips/model";
 import {
-  addWeeks,
+  addDays,
+  daysBetween,
+  DAYS_PER_WEEK,
   parseIsoDate,
   createDestination,
   MAX_DESTINATIONS,
-  MAX_WEEKS,
-  totalWeeks,
+  MAX_TRIP_DAYS,
+  scheduleDestinations,
+  toIsoDate,
+  totalDays,
   isCalendarDate,
 } from "./trips/model";
-
-type ScheduledDestination = Destination & {
-  startDate: Date;
-  endDate: Date;
-  startWeek: number;
-};
 
 type MetadataColumnId = "duration" | "start" | "end" | "color" | "notes";
 
@@ -76,9 +76,9 @@ const COLUMN_DEFINITIONS: Array<{
   label: string;
   width: number;
 }> = [
-  { id: "duration", label: "Weeks", width: 74 },
+  { id: "duration", label: "Days", width: 74 },
   { id: "start", label: "Start", width: 92 },
-  { id: "end", label: "End", width: 92 },
+  { id: "end", label: "End", width: 138 },
   { id: "color", label: "Color", width: 62 },
   { id: "notes", label: "Notes", width: 260 },
 ];
@@ -130,43 +130,6 @@ function readPlannerSettings(): PlannerSettings {
   }
 }
 
-function scheduleDestinations(plan: TripPlan): ScheduledDestination[] {
-  let cursor = parseIsoDate(plan.tripStartDate);
-  let startWeek = 0;
-
-  return plan.destinations.map((destination) => {
-    const startDate = cursor;
-    const endDate = addWeeks(startDate, destination.durationWeeks);
-    const scheduled = {
-      ...destination,
-      startDate,
-      endDate,
-      startWeek,
-    };
-
-    cursor = endDate;
-    startWeek += destination.durationWeeks;
-    return scheduled;
-  });
-}
-
-function getTimelineWeeks(plan: TripPlan) {
-  const totalWeeks = Math.max(
-    1,
-    plan.destinations.reduce(
-      (total, destination) => total + Math.max(1, destination.durationWeeks),
-      0,
-    ),
-  );
-  const start = parseIsoDate(plan.tripStartDate);
-
-  return Array.from({ length: totalWeeks }, (_, index) => ({
-    index,
-    startDate: addWeeks(start, index),
-    endDate: addWeeks(start, index + 1),
-  }));
-}
-
 export function TripWorkspace({
   plan,
   setPlan,
@@ -176,15 +139,12 @@ export function TripWorkspace({
 }) {
   const [editError, setEditError] = useState("");
   const [settingsError, setSettingsError] = useState("");
-  const [activeView, setActiveView] = useState<"itinerary" | "budget" | "globe">(
-    "itinerary",
-  );
+  const [activeView, setActiveView] = useState<
+    "itinerary" | "budget" | "globe" | "schengen"
+  >("itinerary");
   const [detailsId, setDetailsId] = useState<string | null>(null);
   const [settings, setSettings] = useState<PlannerSettings>(() =>
     readPlannerSettings(),
-  );
-  const [durationDrafts, setDurationDrafts] = useState<Record<string, string>>(
-    {},
   );
   const scheduledDestinations = useMemo(
     () => scheduleDestinations(plan),
@@ -197,7 +157,13 @@ export function TripWorkspace({
   const selectedDestination = scheduledDestinations.find(
     (destination) => destination.id === detailsId,
   );
-  const timelineWeeks = useMemo(() => getTimelineWeeks(plan), [plan]);
+  const tripDays = totalDays(plan);
+  const timelineWeeks = useMemo(() => {
+    const start = parseIsoDate(plan.tripStartDate);
+    return Array.from({ length: Math.ceil(tripDays / DAYS_PER_WEEK) }, (_, index) =>
+      addDays(start, index * DAYS_PER_WEEK),
+    );
+  }, [plan.tripStartDate, tripDays]);
   const metadataLayout = useMemo(
     () => getMetadataLayout(settings.visibleColumns),
     [settings.visibleColumns],
@@ -221,17 +187,6 @@ export function TripWorkspace({
     }
   }, [settings]);
 
-  useEffect(() => {
-    setDurationDrafts((current) =>
-      Object.fromEntries(
-        plan.destinations.map((destination) => [
-          destination.id,
-          current[destination.id] ?? String(destination.durationWeeks),
-        ]),
-      ),
-    );
-  }, [plan.destinations]);
-
   function updateDestination(id: string, updates: Partial<Destination>) {
     setPlan((current) => ({
       ...current,
@@ -244,19 +199,17 @@ export function TripWorkspace({
   function addDestination() {
     if (
       plan.destinations.length >= MAX_DESTINATIONS ||
-      totalWeeks(plan) >= MAX_WEEKS
+      tripDays >= MAX_TRIP_DAYS
     ) {
-      setEditError("Trips support up to 100 destinations and 520 total weeks.");
+      setEditError(`Trips support up to ${MAX_DESTINATIONS} destinations and ${MAX_TRIP_DAYS} total days.`);
       return;
     }
     setEditError("");
-    setPlan((current) => ({
-      ...current,
-      destinations: [
-        ...current.destinations,
-        createDestination(current.destinations.length + 1),
-      ],
-    }));
+    setPlan((current) => {
+      const destination = createDestination(current.destinations.length + 1);
+      destination.durationDays = Math.min(destination.durationDays, MAX_TRIP_DAYS - totalDays(current));
+      return { ...current, destinations: [...current.destinations, destination] };
+    });
   }
 
   function removeDestination(id: string) {
@@ -269,41 +222,30 @@ export function TripWorkspace({
     }));
   }
 
-  function updateDurationDraft(id: string, value: string) {
-    setDurationDrafts((current) => ({
-      ...current,
-      [id]: value,
-    }));
-
-    const destination = plan.destinations.find((stop) => stop.id === id);
-    const weeks = Number(value);
+  function updateDuration(destination: ScheduledDestination, days: number) {
     if (
-      !/^\d+$/.test(value) ||
-      !Number.isInteger(weeks) ||
-      weeks < 1 ||
-      !destination ||
-      totalWeeks(plan) - destination.durationWeeks + weeks > MAX_WEEKS
+      !Number.isInteger(days) ||
+      days < 1 ||
+      tripDays - destination.durationDays + days > MAX_TRIP_DAYS
     ) {
       setEditError(
-        "Use whole weeks of at least 1. Total trip duration cannot exceed 520 weeks.",
+        `Use whole days of at least 1. Total trip duration cannot exceed ${MAX_TRIP_DAYS} days.`,
       );
-      return;
+      return false;
     }
     setEditError("");
-    updateDestination(id, { durationWeeks: weeks });
+    updateDestination(destination.id, { durationDays: days });
+    return true;
   }
 
-  function commitDurationDraft(id: string) {
-    const destination = plan.destinations.find((item) => item.id === id);
-
-    if (!destination) {
-      return;
+  function updateEndDate(destination: ScheduledDestination, value: string) {
+    if (!isCalendarDate(value)) return false;
+    const days = daysBetween(destination.startDate, parseIsoDate(value));
+    if (days < 1) {
+      setEditError("A destination must end after its start date.");
+      return false;
     }
-
-    setDurationDrafts((current) => ({
-      ...current,
-      [id]: String(destination.durationWeeks),
-    }));
+    return updateDuration(destination, days);
   }
 
   function toggleColumn(id: MetadataColumnId) {
@@ -392,6 +334,14 @@ export function TripWorkspace({
           >
             <Wallet size={17} aria-hidden="true" />
             Budget
+          </button>
+          <button
+            type="button"
+            aria-current={activeView === "schengen" ? "page" : undefined}
+            onClick={() => setActiveView("schengen")}
+          >
+            <CalendarRange size={17} aria-hidden="true" />
+            Schengen Zone
           </button>
           <button
             type="button"
@@ -494,10 +444,10 @@ export function TripWorkspace({
                   } as CSSProperties
                 }
               >
-                {timelineWeeks.map((week) => (
-                  <div className="week-heading" key={week.index}>
-                    <span>Week {week.index + 1}</span>
-                    <small>{formatShortDate(week.startDate)}</small>
+                {timelineWeeks.map((date, index) => (
+                  <div className="week-heading" key={index}>
+                    <span>Week {index + 1}</span>
+                    <small>{formatShortDate(date)}</small>
                   </div>
                 ))}
               </div>
@@ -519,13 +469,12 @@ export function TripWorkspace({
                       key={destination.id}
                       metadataLayout={metadataLayout}
                       visibleColumns={settings.visibleColumns}
-                      timelineWeeks={timelineWeeks.length}
                       timelineWidth={timelineWidth}
                       weekWidth={settings.weekWidth}
-                      durationDraft={durationDrafts[destination.id]}
                       onChange={updateDestination}
-                      onDurationBlur={commitDurationDraft}
-                      onDurationChange={updateDurationDraft}
+                      onDurationChange={updateDuration}
+                      onEndDateChange={updateEndDate}
+                      maxDuration={MAX_TRIP_DAYS - tripDays + destination.durationDays}
                       onRemove={removeDestination}
                       canRemove={plan.destinations.length > 1}
                       onDetails={setDetailsId}
@@ -543,7 +492,7 @@ export function TripWorkspace({
                 onClick={addDestination}
                 disabled={
                   plan.destinations.length >= MAX_DESTINATIONS ||
-                  totalWeeks(plan) >= MAX_WEEKS
+                  tripDays >= MAX_TRIP_DAYS
                 }
               >
                 <Plus aria-hidden="true" size={18} />
@@ -552,13 +501,15 @@ export function TripWorkspace({
             </div>
           </section>
           <p className="itinerary-hint">
-            Open the settings beside a destination to add cost estimates. Drag
-            the handle to reorder your stops.
+            The end date is the first day of the next stop. Open destination
+            settings to edit costs and Schengen status.
           </p>
         </>
       ) : activeView === "globe" ? (
         <TripGlobe destinations={scheduledDestinations}
           onLocationChange={(id, location) => updateDestination(id, { location })} />
+      ) : activeView === "schengen" ? (
+        <TripSchengen destinations={scheduledDestinations} />
       ) : (
         <TripBudget
           destinations={plan.destinations}
@@ -576,8 +527,8 @@ export function TripWorkspace({
           currency={plan.currency}
           dates={`${formatShortDate(selectedDestination.startDate)} – ${formatShortDate(selectedDestination.endDate)}`}
           onClose={() => setDetailsId(null)}
-          onSave={(costs) => {
-            updateDestination(selectedDestination.id, { costs });
+          onSave={(updates) => {
+            updateDestination(selectedDestination.id, updates);
             setDetailsId(null);
           }}
         />
@@ -590,13 +541,12 @@ type SortableDestinationRowProps = {
   destination: ScheduledDestination;
   metadataLayout: MetadataLayout;
   visibleColumns: VisibleColumns;
-  timelineWeeks: number;
   timelineWidth: number;
   weekWidth: number;
-  durationDraft?: string;
   onChange: (id: string, updates: Partial<Destination>) => void;
-  onDurationBlur: (id: string) => void;
-  onDurationChange: (id: string, value: string) => void;
+  onDurationChange: (destination: ScheduledDestination, days: number) => boolean;
+  onEndDateChange: (destination: ScheduledDestination, value: string) => boolean;
+  maxDuration: number;
   onRemove: (id: string) => void;
   canRemove: boolean;
   onDetails: (id: string) => void;
@@ -607,18 +557,19 @@ function SortableDestinationRow({
   destination,
   metadataLayout,
   visibleColumns,
-  timelineWeeks,
   timelineWidth,
   weekWidth,
-  durationDraft,
   onChange,
-  onDurationBlur,
   onDurationChange,
+  onEndDateChange,
+  maxDuration,
   onRemove,
   canRemove,
   onDetails,
   currency,
 }: SortableDestinationRowProps) {
+  const [durationDraft, setDurationDraft] = useState<string | null>(null);
+  const [endDateDraft, setEndDateDraft] = useState<string | null>(null);
   const {
     attributes,
     listeners,
@@ -678,8 +629,8 @@ function SortableDestinationRow({
             <button
               className="icon-button details-button"
               type="button"
-              aria-label={`Cost details for ${destination.name}`}
-              title={`Cost details · ${formatMoney(calculateStopBudget(destination).total, currency)}`}
+              aria-label={`Details for ${destination.name}`}
+              title={`Destination details · ${formatMoney(calculateStopBudget(destination).total, currency)}`}
               onClick={() => onDetails(destination.id)}
             >
               <Settings2 size={17} aria-hidden="true" />
@@ -688,17 +639,19 @@ function SortableDestinationRow({
 
           {visibleColumns.duration ? (
             <label className="field compact-field">
-              <span className="visually-hidden">Weeks</span>
+              <span className="visually-hidden">Days</span>
               <input
                 inputMode="numeric"
-                min={1}
                 pattern="[0-9]*"
                 type="text"
-                value={durationDraft ?? String(destination.durationWeeks)}
-                onBlur={() => onDurationBlur(destination.id)}
-                onChange={(event) =>
-                  onDurationChange(destination.id, event.target.value)
-                }
+                aria-invalid={durationDraft !== null}
+                value={durationDraft ?? String(destination.durationDays)}
+                onBlur={() => setDurationDraft(null)}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  const days = /^\d+$/.test(value) ? Number(value) : NaN;
+                  setDurationDraft(onDurationChange(destination, days) ? null : value);
+                }}
               />
             </label>
           ) : null}
@@ -710,9 +663,21 @@ function SortableDestinationRow({
           ) : null}
 
           {visibleColumns.end ? (
-            <div className="date-cell">
-              {formatShortDate(destination.endDate)}
-            </div>
+            <label className="field compact-field">
+              <span className="visually-hidden">End date for {destination.name}</span>
+              <input
+                type="date"
+                aria-invalid={endDateDraft !== null}
+                min={toIsoDate(addDays(destination.startDate, 1))}
+                max={toIsoDate(addDays(destination.startDate, maxDuration))}
+                value={endDateDraft ?? toIsoDate(destination.endDate)}
+                onBlur={() => setEndDateDraft(null)}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setEndDateDraft(onEndDateChange(destination, value) ? null : value);
+                }}
+              />
+            </label>
           ) : null}
 
           {visibleColumns.color ? (
@@ -758,7 +723,6 @@ function SortableDestinationRow({
         className="timeline-cell"
         style={
           {
-            "--week-count": timelineWeeks,
             "--week-width": `${weekWidth}px`,
             "--timeline-width": `${timelineWidth}px`,
           } as CSSProperties
@@ -769,12 +733,12 @@ function SortableDestinationRow({
           style={
             {
               "--bar-color": destination.color,
-              "--start-week": destination.startWeek + 1,
-              "--duration-weeks": destination.durationWeeks,
+              "--bar-start": `${(destination.startDay * weekWidth) / DAYS_PER_WEEK}px`,
+              "--bar-width": `${(destination.durationDays * weekWidth) / DAYS_PER_WEEK}px`,
             } as CSSProperties
           }
         >
-          <span>{destination.durationWeeks}w</span>
+          <span>{destination.durationDays}d</span>
         </div>
       </div>
     </div>

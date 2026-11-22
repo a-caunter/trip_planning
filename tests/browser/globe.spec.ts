@@ -53,7 +53,7 @@ test("globe loads on demand, rotates, zooms, resets, and selects stops", async (
   await expect.poll(async () => Number(await globe.getAttribute("data-altitude"))).toBeLessThan(2);
   await page.getByRole("button", { name: "Zoom out", exact: true }).click();
   await expect.poll(async () => Number(await globe.getAttribute("data-altitude"))).toBeGreaterThan(2);
-  await page.getByRole("button", { name: /^Tokyo 1 week/ }).click();
+  await page.getByRole("button", { name: /^Tokyo 7 days/ }).click();
   await expect(page.locator(".globe-selection")).toContainText("3. Tokyo");
   await expect.poll(async () => Number(await globe.getAttribute("data-longitude"))).toBeCloseTo(139.6503, 0);
   await expect(page.getByRole("button", { name: "Show stop 3: Tokyo", exact: true })).toBeVisible();
@@ -99,12 +99,18 @@ test("location editor validates, cancels, saves, clears, and survives reload", a
 });
 
 test("reordering, switching trips, and repeated tab visits update the globe", async ({ page }) => {
+  test.slow();
   await seed(page);
   await openGlobe(page);
   await page.getByRole("button", { name: "Itinerary", exact: true }).click();
   await expect(page.locator(".globe-canvas canvas")).toHaveCount(0);
   await page.getByRole("button", { name: "Reorder Lisbon" }).focus();
-  await page.keyboard.press("Space"); await page.keyboard.press("ArrowDown"); await page.keyboard.press("Space");
+  const dragStatus = page.locator("[role='status'][aria-live='assertive']");
+  await page.keyboard.press("Space");
+  await expect(dragStatus).toContainText("moved over droppable area 0");
+  await page.keyboard.press("ArrowDown");
+  await expect(dragStatus).toContainText("moved over droppable area 1");
+  await page.keyboard.press("Space");
   await expect(page.getByRole("textbox", { name: "Destination", exact: true }).first()).toHaveValue("Porto");
   await openGlobe(page);
   await expect(page.locator(".globe-stop-list li").first()).toContainText("Porto");
@@ -112,7 +118,7 @@ test("reordering, switching trips, and repeated tab visits update the globe", as
     await page.getByRole("button", { name: "Budget", exact: true }).click(); await openGlobe(page);
     await expect(page.locator(".globe-canvas canvas")).toHaveCount(1);
   }
-  await page.getByLabel("Current trip", { exact: true }).selectOption("other");
+  await page.getByRole("combobox", { name: "Current trip", exact: true }).selectOption("other");
   await expect(page.getByRole("button", { name: "Itinerary", exact: true })).toHaveAttribute("aria-current", "page");
   const globe = await openGlobe(page);
   await expect(globe).toHaveAttribute("data-stops", "1");
@@ -143,7 +149,7 @@ test("mobile and reduced-motion layout supports nearby stops and location editin
   await page.emulateMedia({ reducedMotion: "reduce" });
   await seed(page, example.trip.destinations.map((s) => ({ name: s.name, ...s.location })));
   const globe = await openGlobe(page);
-  await page.getByRole("button", { name: /^Porto 1 week/ }).click();
+  await page.getByRole("button", { name: /^Porto 7 days/ }).click();
   await expect(globe).toHaveAttribute("data-legs", "1");
   await page.screenshot({ path: testInfo.outputPath("globe-mobile.png"), fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

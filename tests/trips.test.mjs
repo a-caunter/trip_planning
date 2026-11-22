@@ -20,12 +20,16 @@ import {
   uniqueTitle,
 } from "../src/trips/library.ts";
 import {
-  addWeeks,
+  addDays,
+  daysBetween,
   parseIsoDate,
   toIsoDate,
   isCalendarDate,
   MAX_FILE_BYTES,
+  MAX_TRIP_DAYS,
+  scheduleDestinations,
 } from "../src/trips/model.ts";
+import { calculateSchengenSeries } from "../src/trips/schengen.ts";
 import { buildTripPrompt } from "../src/trips/prompt.ts";
 import { calculateTripBudget } from "../src/budget.ts";
 
@@ -74,13 +78,14 @@ test("optional defaults distinguish missing estimates and zero", () => {
   const file = example();
   delete file.trip.description;
   file.trip.destinations = [
-    { name: "One stop", durationWeeks: 1, costs: { flights: 0 } },
+    { name: "One stop", durationDays: 1, costs: { flights: 0 } },
   ];
   const result = parseTripFile(JSON.stringify(file));
   assert.equal(result.ok, true);
   const plan = fileToPlan(result.file);
   assert.equal(plan.description, "");
   assert.equal(plan.destinations[0].notes, "");
+  assert.equal(plan.destinations[0].schengen, false);
   assert.match(plan.destinations[0].color, /^#[a-f0-9]{6}$/);
   assert.equal(plan.destinations[0].costs.flights, 0);
   assert.equal(plan.destinations[0].costs.lodging, null);
@@ -130,15 +135,21 @@ test("unknown fields, missing fields, currencies, and unsupported versions produ
     ],
     [
       (file) => {
-        file.version = 3;
+        file.version = 4;
       },
-      /Unsupported trip file version 3/,
+      /Unsupported trip file version 4/,
     ],
     [
       (file) => {
-        file.trip.destinations[1].durationWeeks = 1.5;
+        file.trip.destinations[1].durationDays = 1.5;
       },
       /Destination 2.*whole number/,
+    ],
+    [
+      (file) => {
+        file.trip.destinations[1].schengen = "true";
+      },
+      /Destination 2.*schengen.*boolean/,
     ],
   ];
   for (const [change, message] of cases) {
@@ -150,7 +161,7 @@ test("unknown fields, missing fields, currencies, and unsupported versions produ
   }
 });
 
-test("only real calendar dates are accepted and weeks follow the local calendar across DST", () => {
+test("only real calendar dates are accepted and durations follow the local calendar across DST", () => {
   for (const date of [
     "2027-02-29",
     "2027-04-31",
@@ -168,9 +179,10 @@ test("only real calendar dates are accepted and weeks follow the local calendar 
       ["2026-03-02", "2026-03-09"],
       ["2026-10-26", "2026-11-02"],
     ]) {
-      const result = addWeeks(parseIsoDate(start), 1);
+      const result = addDays(parseIsoDate(start), 7);
       assert.equal(toIsoDate(result), end);
       assert.equal(result.getHours(), 0);
+      assert.equal(daysBetween(parseIsoDate(start), result), 7);
     }
   } finally {
     if (previous === undefined) delete process.env.TZ;
@@ -204,21 +216,25 @@ test("invalid prices and excessive files, stops, and total duration are rejected
   const many = example();
   many.trip.destinations = Array.from({ length: 101 }, () => ({
     name: "Stop",
-    durationWeeks: 1,
+    durationDays: 1,
   }));
   assert.equal(validateTripFile(many).ok, false);
   const long = example();
-  long.trip.destinations[0].durationWeeks = 520;
+  long.trip.destinations[0].durationDays = MAX_TRIP_DAYS;
   assert.equal(validateTripFile(long).ok, false);
 });
 
 test("legacy migration preserves original data, IDs, prices, and settings", () => {
   const storage = memory();
   const plan = fresh();
+  for (const stop of plan.destinations) stop.schengen = false;
   const legacy = JSON.stringify({
     tripStartDate: plan.tripStartDate,
     currency: plan.currency,
-    destinations: plan.destinations,
+    destinations: plan.destinations.map(({ durationDays, schengen, ...stop }) => ({
+      ...stop,
+      durationWeeks: durationDays / 7,
+    })),
   });
   storage.setItem(LEGACY_KEY, legacy);
   storage.setItem("trip-planning:planner-settings", '{"weekWidth":100}');
@@ -236,6 +252,56 @@ test("legacy migration preserves original data, IDs, prices, and settings", () =
     '{"weekWidth":100}',
   );
   assert.deepEqual(loadLibrary(storage).library, loaded.library);
+});
+
+test("week-based JSON versions and saved libraries migrate to day durations", () => {
+  for (const version of [1, 2]) {
+    const file = example();
+    file.version = version;
+    file.trip.destinations = file.trip.destinations.map(({ durationDays, schengen, ...stop }) => {
+      if (version === 1) delete stop.location;
+      return { ...stop, durationWeeks: durationDays / 7 };
+    });
+    const parsed = parseTripFile(JSON.stringify(file));
+    assert.equal(parsed.ok, true);
+    const exported = planToFile(fileToPlan(parsed.file));
+    assert.equal(exported.version, 3);
+    assert.equal(exported.trip.destinations[0].durationDays, 7);
+    assert.equal(exported.trip.destinations[0].schengen, false);
+    assert.deepEqual(exported.trip.destinations[0].location, file.trip.destinations[0].location);
+  }
+
+  const storage = memory();
+  const library = addTrip(empty(), fresh());
+  const first = library.trips[0].plan.destinations[0];
+  const { durationDays, schengen, ...stop } = first;
+  library.trips[0].plan.destinations[0] = { ...stop, durationWeeks: 2 };
+  saveLibrary(storage, library);
+  const loaded = loadLibrary(storage);
+  assert.equal(loaded.error, null);
+  assert.deepEqual(loaded.library.trips[0].plan.destinations[0], {
+    ...stop, durationDays: 14, schengen: false,
+  });
+});
+
+test("daily Schengen counts roll over exactly 180 dates and count adjacent stops once", () => {
+  const file = example();
+  file.trip.tripStartDate = "2026-01-01";
+  file.trip.destinations = [
+    { name: "First stop", durationDays: 120, schengen: true },
+    { name: "Second stop", durationDays: 80, schengen: true },
+    { name: "Third stop", durationDays: 180, schengen: false },
+  ];
+  const stops = scheduleDestinations(fileToPlan(file));
+  const { counts, peak, peakEndDay } = calculateSchengenSeries(stops);
+  assert.equal(counts.length, 380);
+  assert.equal(peak, 180);
+  assert.equal(peakEndDay, 179);
+  assert.equal(counts[0], 1);
+  assert.deepEqual([...counts.slice(119, 121)], [120, 121]);
+  assert.deepEqual([...counts.slice(178, 181)], [179, 180, 180]);
+  assert.deepEqual([...counts.slice(199, 202)], [180, 179, 178]);
+  assert.deepEqual([...counts.slice(-3)], [2, 1, 0]);
 });
 
 test("libraries preserve independent trips through duplicate, rename, removal, and reload", () => {

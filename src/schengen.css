@@ -1,0 +1,162 @@
+.schengen-heading {
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.schengen-heading .summary-card {
+  gap: 6px;
+  padding: 16px 22px;
+}
+
+.schengen-chart {
+  margin: 0;
+}
+
+.schengen-chart-heading {
+  align-items: flex-start;
+  flex-wrap: wrap;
+  padding: 20px 24px 12px;
+}
+
+.schengen-chart-reading {
+  background: #f3f6fb;
+  border-radius: 8px;
+  display: grid;
+  gap: 3px;
+  max-width: 100%;
+  padding: 10px 14px;
+  overflow-wrap: anywhere;
+}
+
+.schengen-chart-reading time,
+.schengen-chart-reading small {
+  color: #475467;
+  font-size: 0.78rem;
+}
+
+.schengen-chart-reading strong {
+  font-size: 0.88rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.schengen-chart-plot {
+  margin-inline: 12px;
+}
+
+.schengen-chart-plot svg {
+  cursor: crosshair;
+  display: block;
+  height: auto;
+  width: 100%;
+}
+
+.schengen-chart-plot svg:focus-visible {
+  border-radius: 6px;
+  outline-offset: -3px;
+}
+
+.schengen-chart-plot text {
+  fill: #475467;
+  font-size: 11px;
+  pointer-events: none;
+}
+
+.schengen-chart-grid {
+  stroke: #d9e2ed;
+}
+
+.schengen-chart-line {
+  fill: none;
+  stroke: #1c4cac;
+  stroke-linejoin: round;
+  stroke-width: 2.5;
+}
+
+.schengen-chart-cursor {
+  pointer-events: none;
+  stroke: #536a8b;
+  stroke-dasharray: 3 3;
+}
+
+.schengen-chart-point {
+  fill: #1c4cac;
+  pointer-events: none;
+  stroke: white;
+  stroke-width: 2;
+}
+
+.schengen-stay {
+  fill: #e2f4ed;
+  stroke: #a5d5c2;
+  stroke-width: 0.5;
+}
+
+.schengen-stay-edge {
+  fill: #6db69e;
+}
+
+.schengen-stay-leader {
+  stroke: #6db69e;
+}
+
+.schengen-stay-label rect {
+  fill: #e2f4ed;
+}
+
+.schengen-stay-label text {
+  fill: #155d4c;
+  font-weight: 650;
+}
+
+.schengen-chart-footer {
+  align-items: center;
+  color: #475467;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.78rem;
+  gap: 8px 20px;
+  padding: 4px 24px 20px;
+}
+
+.schengen-chart-legend {
+  align-items: center;
+  display: inline-flex;
+  font-weight: 650;
+  gap: 7px;
+}
+
+.schengen-chart-legend i {
+  background: #e2f4ed;
+  border-bottom: 3px solid #6db69e;
+  border-radius: 3px;
+  height: 14px;
+  width: 14px;
+}
+
+.schengen-chart-stays {
+  border-top: 1px solid #e8edf4;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 12px 24px 18px;
+}
+
+.schengen-chart-stays li {
+  min-width: 0;
+}
+
+.schengen-chart-stays button {
+  background: #e2f4ed;
+  border: 0;
+  border-radius: 6px;
+  color: #155d4c;
+  display: grid;
+  font-size: 0.77rem;
+  gap: 2px;
+  overflow-wrap: anywhere;
+  padding: 7px 10px;
+  text-align: left;
+  width: 100%;
+}

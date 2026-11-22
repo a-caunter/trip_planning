@@ -10,7 +10,7 @@ import {
 const stop = (overrides = {}) => ({
   id: "one",
   name: "First stop",
-  durationWeeks: 2,
+  durationDays: 14,
   costs: normalizeCosts(),
   ...overrides,
 });
@@ -44,8 +44,8 @@ test("rates scale with duration while one-time costs remain fixed", () => {
   assert.equal(result.total, 2305);
   assert.equal(result.entered, 5);
   assert.equal(
-    calculateStopBudget(stop({ durationWeeks: 3, costs })).total,
-    3215,
+    calculateStopBudget(stop({ durationDays: 3, costs })).total,
+    875,
   );
 });
 
@@ -75,7 +75,7 @@ test("decimal estimates add in cents without floating point drift", () => {
     }),
     stop({
       id: "two",
-      durationWeeks: 1,
+      durationDays: 7,
       costs: normalizeCosts({ flights: 0.2, lodging: 10.01 }),
     }),
   ]);
@@ -97,7 +97,7 @@ test("trip totals reflect reordering, removal, and added unestimated stops", () 
   });
   const b = stop({
     id: "two",
-    durationWeeks: 1,
+    durationDays: 7,
     costs: normalizeCosts({ flights: 150 }),
   });
   const total = calculateTripBudget([a, b]);

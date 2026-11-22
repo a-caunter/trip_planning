@@ -24,11 +24,11 @@ test("creates, switches, edits, duplicates, deletes, and reloads a library", asy
   await page
     .getByRole("textbox", { name: "Destination", exact: true })
     .fill("Tokyo");
-  await page.getByRole("textbox", { name: "Weeks", exact: true }).fill("3");
+  await page.getByRole("textbox", { name: "Days", exact: true }).fill("3");
   await page.getByRole("button", { name: "My trips", exact: true }).click();
   await expect(
     page.getByRole("article", { name: "Japan in spring", exact: true }),
-  ).toContainText("3 weeks");
+  ).toContainText("3 days");
   await page
     .getByRole("button", { name: "Duplicate Japan in spring", exact: true })
     .click();
@@ -64,21 +64,21 @@ test("creates, switches, edits, duplicates, deletes, and reloads a library", asy
     .getByRole("combobox", { name: "Current trip" })
     .selectOption({ label: "Japan in spring" });
   await expect(
-    page.getByRole("textbox", { name: "Weeks", exact: true }),
+    page.getByRole("textbox", { name: "Days", exact: true }),
   ).toHaveValue("3");
-  await page.getByRole("textbox", { name: "Weeks", exact: true }).fill("9999");
-  await expect(page.getByRole("alert")).toContainText("520 weeks");
+  await page.getByRole("textbox", { name: "Days", exact: true }).fill("9999");
+  await expect(page.getByRole("alert")).toContainText("3640 days");
   await page
     .getByRole("combobox", { name: "Current trip" })
     .selectOption({ label: "Untitled trip" });
   await expect(
-    page.getByRole("textbox", { name: "Weeks", exact: true }),
-  ).toHaveValue("1");
+    page.getByRole("textbox", { name: "Days", exact: true }),
+  ).toHaveValue("7");
   await page
     .getByRole("combobox", { name: "Current trip" })
     .selectOption({ label: "Japan in spring" });
   await expect(
-    page.getByRole("textbox", { name: "Weeks", exact: true }),
+    page.getByRole("textbox", { name: "Days", exact: true }),
   ).toHaveValue("3");
   await page.reload();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
@@ -99,7 +99,7 @@ test("pastes fenced JSON, previews without mutation, imports, downloads, and imp
   await page.getByRole("button", { name: "Review trip" }).click();
   await expect(
     page.getByRole("region", { name: "Import preview" }),
-  ).toContainText("2 weeks");
+  ).toContainText("14 days");
   await expect(
     page.getByRole("region", { name: "Import preview" }),
   ).toContainText("$2,495.00");
@@ -134,7 +134,7 @@ test("pastes fenced JSON, previews without mutation, imports, downloads, and imp
     .getByLabel("Choose trip file", { exact: true })
     .setInputFiles(path!);
   await expect(page.getByLabel("Trip JSON", { exact: true })).toHaveValue(
-    /"version": 2/,
+    /"version": 3/,
   );
   await page.getByRole("button", { name: "Review trip" }).click();
   await page.getByRole("button", { name: "Import as new trip" }).click();
@@ -151,7 +151,7 @@ test("invalid imports report fields and do not change the library", async ({
 }) => {
   await page.getByRole("button", { name: "Import trip", exact: true }).click();
   const invalid = structuredClone(example);
-  invalid.trip.destinations[1].durationWeeks = 1.5;
+  invalid.trip.destinations[1].durationDays = 1.5;
   await page
     .getByLabel("Trip JSON", { exact: true })
     .fill(JSON.stringify(invalid));
@@ -165,6 +165,75 @@ test("invalid imports report fields and do not change the library", async ({
   await expect(
     page.getByRole("combobox", { name: "Current trip" }).locator("option"),
   ).toHaveCount(1);
+});
+
+test("end dates and durations stay in sync and Schengen counts survive export and reload", async ({ page }, testInfo) => {
+  await page.getByLabel("Trip start", { exact: true }).fill("2026-01-01");
+  const durations = page.getByRole("textbox", { name: "Days", exact: true });
+  const endDate = (index: number) => page.getByLabel(`End date for Destination ${index}`, { exact: true });
+
+  await expect(endDate(1)).toHaveValue("2026-01-08");
+  await page.getByRole("button", { name: "Add destination" }).click();
+  await durations.nth(0).fill("2");
+  await expect(endDate(1)).toHaveValue("2026-01-03");
+  await expect(endDate(2)).toHaveValue("2026-01-10");
+  await endDate(1).fill("2026-01-01");
+  await expect(page.getByRole("alert")).toContainText("end after its start date");
+  await endDate(1).blur();
+  await expect(endDate(1)).toHaveValue("2026-01-03");
+  await endDate(1).fill("2026-01-04");
+  await expect(durations.nth(0)).toHaveValue("3");
+  await expect(endDate(2)).toHaveValue("2026-01-11");
+  await endDate(2).fill("2026-06-30");
+  await page.getByRole("button", { name: "Add destination" }).click();
+  await durations.nth(2).fill("1");
+  await expect(endDate(3)).toHaveValue("2026-07-01");
+  await page.getByRole("button", { name: "Add destination" }).click();
+  await durations.nth(3).fill("1");
+
+  for (const index of [1, 3]) {
+    await page.getByRole("button", { name: `Details for Destination ${index}`, exact: true }).click();
+    await page.getByRole("checkbox", { name: "Count this stop in the Schengen Zone tracker" }).check();
+    await page.getByRole("button", { name: "Save details" }).click();
+  }
+
+  const downloadEvent = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export JSON" }).click();
+  const download = await downloadEvent;
+  const exported = JSON.parse(await readFile((await download.path())!, "utf8"));
+  expect(exported.version).toBe(3);
+  expect(exported.trip.destinations.map(({ durationDays, schengen }) => [durationDays, schengen]))
+    .toEqual([[3, true], [177, false], [1, true], [1, false]]);
+
+  await page.reload();
+  await expect(endDate(2)).toHaveValue("2026-06-30");
+  await page.getByRole("button", { name: "Schengen Zone", exact: true }).click();
+  const tracker = page.getByRole("region", { name: "Schengen Zone tracker" });
+  await expect(tracker.getByRole("article")).toContainText("3 days");
+  await expect(tracker.getByRole("article")).toContainText("Window ending Jan 3, 2026");
+  const chart = tracker.getByRole("slider", { name: "Inspect date on Schengen chart" });
+  const stays = chart.locator(".schengen-stay");
+  await expect(stays).toHaveCount(2);
+  await expect(chart.locator(".schengen-stay-label")).toHaveText(["Destination 1", "Destination 3"]);
+  await stays.first().locator("rect").first().hover();
+  await expect(chart).toHaveAttribute("aria-valuetext", "Jan 2, 2026, 2 days in the last 180 days, Destination 1");
+  await chart.press("End");
+  await expect(chart).toHaveAttribute("aria-valuetext", "Jul 1, 2026, 2 days in the last 180 days");
+  await chart.press("ArrowLeft");
+  await expect(chart).toHaveAttribute("aria-valuetext", "Jun 30, 2026, 3 days in the last 180 days, Destination 3");
+  await tracker.screenshot({ path: testInfo.outputPath("schengen-chart-desktop.png") });
+
+  await page.getByRole("button", { name: "Itinerary", exact: true }).click();
+  await page.getByRole("button", { name: "Details for Destination 3", exact: true }).click();
+  await page.getByRole("checkbox", { name: "Count this stop in the Schengen Zone tracker" }).uncheck();
+  await page.getByRole("button", { name: "Save details" }).click();
+  await page.getByRole("button", { name: "Schengen Zone", exact: true }).click();
+  await expect(stays).toHaveCount(1);
+  await chart.press("End");
+  await expect(chart).toHaveAttribute("aria-valuetext", "Jul 1, 2026, 1 day in the last 180 days");
+  await page.setViewportSize({ width: 320, height: 740 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await tracker.screenshot({ path: testInfo.outputPath("schengen-chart-mobile.png") });
 });
 
 test("AI workflow includes selected trip, prompt download, clipboard fallback, and materials", async ({

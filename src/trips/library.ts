@@ -1,6 +1,6 @@
 import { normalizeCosts, normalizeCurrency } from "../budget.ts";
-import { COLORS, createTrip, makeStoredTrip } from "./model.ts";
-import type { StoredTrip, TripLibrary, TripPlan } from "./model.ts";
+import { COLORS, DAYS_PER_WEEK, createTrip, makeStoredTrip } from "./model.ts";
+import type { Destination, StoredTrip, TripLibrary, TripPlan } from "./model.ts";
 import { planToFile, validateTripFile } from "./files.ts";
 
 export const LIBRARY_KEY = "trip-planning:library";
@@ -10,6 +10,14 @@ export type LoadedLibrary = {
   library: TripLibrary;
   error: string | null;
   blocked: boolean;
+};
+type SavedDestination = Omit<Destination, "durationDays" | "schengen"> & {
+  durationDays?: number;
+  durationWeeks?: number;
+  schengen?: boolean;
+};
+type SavedTrip = Omit<StoredTrip, "plan"> & {
+  plan: Omit<TripPlan, "destinations"> & { destinations: SavedDestination[] };
 };
 const emptyLibrary = (): TripLibrary => ({
   version: 1,
@@ -66,11 +74,11 @@ export function removeTrip(library: TripLibrary, id: string): TripLibrary {
 }
 
 function validateStoredLibrary(value: unknown): TripLibrary {
-  const library = value as TripLibrary;
+  const library = value as Omit<TripLibrary, "trips"> & { trips: SavedTrip[] };
   if (!library || library.version !== 1 || !Array.isArray(library.trips))
     throw new Error("Unsupported library");
   const ids = new Set<string>();
-  for (const record of library.trips) {
+  const trips = library.trips.map((record): StoredTrip => {
     if (
       !record ||
       typeof record.id !== "string" ||
@@ -81,7 +89,20 @@ function validateStoredLibrary(value: unknown): TripLibrary {
     )
       throw new Error("Invalid trip record");
     ids.add(record.id);
-    const file = planToFile(record.plan);
+    const plan: TripPlan = {
+      ...record.plan,
+      destinations: record.plan.destinations.map(({ durationWeeks, durationDays, schengen = false, ...stop }) => {
+        const legacyDays = typeof durationWeeks === "number" && Number.isInteger(durationWeeks)
+          ? durationWeeks * DAYS_PER_WEEK
+          : NaN;
+        return {
+          ...stop,
+          durationDays: durationDays === undefined ? legacyDays : durationDays,
+          schengen,
+        };
+      }),
+    };
+    const file = planToFile(plan);
     // A destination name may have been saved mid-edit. Preserve that draft.
     file.trip.destinations = file.trip.destinations.map((stop) => ({
       ...stop,
@@ -91,16 +112,17 @@ function validateStoredLibrary(value: unknown): TripLibrary {
           : stop.name,
     }));
     if (!validateTripFile(file).ok) throw new Error("Invalid saved trip");
-    const stopIds = record.plan.destinations.map((stop) => stop.id);
+    const stopIds = plan.destinations.map((stop) => stop.id);
     if (
       stopIds.some((id) => typeof id !== "string" || !id) ||
       new Set(stopIds).size !== stopIds.length
     )
       throw new Error("Invalid destination IDs");
-  }
+    return { ...record, plan };
+  });
   if (library.activeTripId !== null && !ids.has(library.activeTripId))
     throw new Error("Invalid active trip");
-  return library;
+  return { ...library, trips };
 }
 
 export function loadLibrary(storage: StorageAccess): LoadedLibrary {
@@ -123,10 +145,11 @@ export function loadLibrary(storage: StorageAccess): LoadedLibrary {
         tripStartDate: old.tripStartDate,
         currency: normalizeCurrency(old.currency),
         destinations: old.destinations.map(
-          (stop: Partial<TripPlan["destinations"][number]>, index: number) => ({
+          (stop: Partial<SavedDestination>, index: number) => ({
             id: stop.id || crypto.randomUUID(),
             name: stop.name || `Destination ${index + 1}`,
-            durationWeeks: Math.max(1, Number(stop.durationWeeks) || 1),
+            durationDays: stop.durationDays ?? Math.max(1, Number(stop.durationWeeks) || 1) * DAYS_PER_WEEK,
+            schengen: stop.schengen ?? false,
             color: stop.color || COLORS[index % COLORS.length],
             notes: stop.notes || "",
             costs: normalizeCosts(stop.costs),

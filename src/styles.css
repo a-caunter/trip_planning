@@ -207,8 +207,7 @@ h1 {
   white-space: nowrap;
 }
 
-.timeline-heading,
-.timeline-cell {
+.timeline-heading {
   display: grid;
   grid-template-columns: repeat(var(--week-count), var(--week-width));
   min-width: var(--timeline-width);
@@ -346,12 +345,12 @@ h1 {
 }
 
 .timeline-cell {
-  align-items: center;
   background:
     linear-gradient(to right, #e8edf4 1px, transparent 1px),
     #ffffff;
   background-size: var(--week-width) 100%;
   min-height: 46px;
+  min-width: var(--timeline-width);
   position: relative;
 }
 
@@ -364,12 +363,12 @@ h1 {
   display: flex;
   font-size: 0.78rem;
   font-weight: 800;
-  grid-column: var(--start-week) / span var(--duration-weeks);
   height: 26px;
+  inset-block-start: 10px;
+  inset-inline-start: calc(var(--bar-start) + 1px);
   justify-content: center;
-  margin: 0 6px;
-  min-width: 32px;
-  position: relative;
+  position: absolute;
+  width: calc(var(--bar-width) - 2px);
 }
 
 .duration-bar span {

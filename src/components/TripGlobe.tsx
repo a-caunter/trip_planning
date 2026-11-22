@@ -1,12 +1,11 @@
 import { Component, lazy, Suspense, useCallback, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Globe2, MapPin } from "lucide-react";
-import type { Destination, DestinationLocation } from "../trips/model";
+import type { DestinationLocation, ScheduledDestination } from "../trips/model";
 import { buildGlobeRoute } from "../globe/route";
 import { LocationEditor } from "./LocationEditor";
 import "../globe.css";
 
 const GlobeSurface = lazy(() => import("./GlobeSurface"));
-type ScheduledStop = Destination & { startDate: Date; endDate: Date };
 const formatDate = (date: Date) => new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(date);
 
 function GlobeUnavailable() {
@@ -20,7 +19,7 @@ class GlobeBoundary extends Component<{ children: ReactNode }, { failed: boolean
 }
 
 export function TripGlobe({ destinations, onLocationChange }: {
-  destinations: ScheduledStop[];
+  destinations: ScheduledDestination[];
   onLocationChange: (id: string, location: DestinationLocation | undefined) => void;
 }) {
   const route = useMemo(() => buildGlobeRoute(destinations), [destinations]);
@@ -53,7 +52,7 @@ export function TripGlobe({ destinations, onLocationChange }: {
         </GlobeBoundary>}
         <div className="globe-selection" aria-live="polite">
           {selected ? <><strong>{destinations.indexOf(selected) + 1}. {selected.name || "Untitled destination"}</strong>
-            <span>{formatDate(selected.startDate)} – {formatDate(selected.endDate)} · {selected.durationWeeks} {selected.durationWeeks === 1 ? "week" : "weeks"}</span>
+            <span>{formatDate(selected.startDate)} – {formatDate(selected.endDate)} · {selected.durationDays} {selected.durationDays === 1 ? "day" : "days"}</span>
             {!selected.location && <span>Location needed — choose Edit location to place this stop.</span>}</>
             : <><strong>Every stop has a place.</strong><span>Select a stop to explore your route.</span></>}
         </div>
@@ -70,7 +69,7 @@ export function TripGlobe({ destinations, onLocationChange }: {
               <button type="button" className="globe-stop-select" aria-pressed={selectedId === stop.id}
                 onClick={() => { setSelectedId(stop.id); setFocusRequest((current) => ({ id: stop.id, sequence: (current?.sequence ?? 0) + 1 })); }}>
                 <strong>{stop.name || "Untitled destination"}</strong>
-                <span>{stop.durationWeeks} {stop.durationWeeks === 1 ? "week" : "weeks"} · {formatDate(stop.startDate)}</span>
+                <span>{stop.durationDays} {stop.durationDays === 1 ? "day" : "days"} · {formatDate(stop.startDate)}</span>
               </button>
               <span className={`globe-location${stop.location ? "" : " is-missing"}`}>
                 {stop.location ? `${stop.location.latitude.toFixed(4)}, ${stop.location.longitude.toFixed(4)}` : "Location needed"}

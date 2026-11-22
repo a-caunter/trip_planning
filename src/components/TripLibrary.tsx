@@ -1,6 +1,6 @@
 import { Copy, Download, Pencil, Trash2, Map } from "lucide-react";
 import { calculateTripBudget, formatMoney } from "../budget";
-import { totalWeeks } from "../trips/model";
+import { totalDays } from "../trips/model";
 import type { StoredTrip } from "../trips/model";
 
 export function TripLibrary({
@@ -75,8 +75,8 @@ export function TripLibrary({
                     <div>
                       <dt>Itinerary</dt>
                       <dd>
-                        {totalWeeks(trip.plan)}{" "}
-                        {totalWeeks(trip.plan) === 1 ? "week" : "weeks"} ·{" "}
+                        {totalDays(trip.plan)}{" "}
+                        {totalDays(trip.plan) === 1 ? "day" : "days"} ·{" "}
                         {trip.plan.destinations.length}{" "}
                         {trip.plan.destinations.length === 1 ? "stop" : "stops"}
                       </dd>

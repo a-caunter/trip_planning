@@ -82,7 +82,7 @@ export function CreateWithAI({
           </select>
         </div>
         <p className="budget-note">
-          Include your start date, number of weeks, travelers, currency, budget,
+          Include your start date, duration, travelers, currency, budget,
           and interests. The example teaches the file structure; your request
           sets the itinerary.
         </p>
